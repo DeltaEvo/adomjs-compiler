@@ -1,0 +1,30 @@
+{
+  "name": "@adomjs/compiler",
+  "version": "0.0.1",
+  "description": "Adomjs compiler",
+  "main": "index.js",
+  "scripts": {
+    "format": "prettier --write \"src/**/*.js\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adomjs/compiler.git"
+  },
+  "author": "Duarte David <deltaduartedavid@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/adomjs/compiler/issues"
+  },
+  "homepage": "https://github.com/adomjs/compiler#readme",
+  "dependencies": {
+    "@babel/generator": "^7.0.0",
+    "@babel/parser": "^7.1.0",
+    "@babel/template": "^7.1.0",
+    "@babel/traverse": "^7.1.0",
+    "@babel/types": "^7.0.0",
+    "xmldom-sre": "^0.1.31"
+  },
+  "devDependencies": {
+    "prettier": "^1.14.3"
+  }
+}
