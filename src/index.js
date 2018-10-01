@@ -6,6 +6,7 @@ const { default: template } = require('@babel/template');
 const assert = require('assert');
 
 const createSetState = require('./set-state');
+const removeEmptyTextNodes = require('./utils/remove-empty-text-nodes')
 
 module.exports = function compile(
 	input,
@@ -42,6 +43,9 @@ module.exports = function compile(
 
 function transformClass(clazz, id, doc) {
 	const element = doc.getElementById(id);
+
+	removeEmptyTextNodes(element);
+
 	const methods = clazz.get('body.body');
 
 	const constructor =
@@ -97,3 +101,4 @@ function attachShadow(constructor, ownerDocument, id) {
 			)
 	`);
 }
+
