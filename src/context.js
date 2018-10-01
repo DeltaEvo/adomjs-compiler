@@ -1,27 +1,45 @@
 const t = require('@babel/types');
+const { TEXT_NODE } = require('./utils/constants')
 
 const CHILD_NODES = t.identifier('_');
 const DOCUMENT = t.identifier('_doc');
-const TEXT_NODE = 3;
+
+const __meta__ = Symbol("__meta__")
 
 function createContext(
 	{
 		ownerDocument,
 		nextSibling,
 		templateId,
-		elementCounters = new WeakMap(),
+		elementCounter: oldElementCounter,
 		hooks = [],
 		counters = { i: 0, tId: 0, rId: 0 }
 	},
 	root,
-	getNodeOverride
+	parent,
+	{
+		enableCounter = false,
+		getNodeOverride
+	} = {}
 ) {
+
+	const newRoot = !(parent && __meta__ in parent && parent[__meta__].identifier);
+	const identifier = newRoot ? t.identifier(`_r${counters.rId++}`) : parent[__meta__].identifier;
+	const elementCounter = newRoot ? (enableCounter ? t.identifier(`_c${counters.i++}`) : null) : oldElementCounter
+	const newMeta = {
+		identifier,
+		elementCounter
+	}
+	if (parent)
+		parent[__meta__] = newMeta;
+	root[__meta__] = newMeta;
 	return {
-		identifier: t.identifier(`_r${counters.rId++}`),
+		identifier: identifier,
+		newRoot,
 		root,
 		ownerDocument,
 		hooks,
-		elementCounters,
+		elementCounter,
 		nextSibling,
 		templateId,
 		getNodeOverride,
@@ -35,12 +53,22 @@ function getNode(node, context) {
 		if (res) return res;
 	}
 	if (node === context.root) return context.identifier;
-	else
+	else if (__meta__ in node) return node[__meta__].identifier;
+	else {
+		let numAst = t.numericLiteral(Array.from(node.parentNode.childNodes).indexOf(node))
+		if (node.parentNode && __meta__ in node.parentNode && node.parentNode[__meta__].elementCounter) {
+			const counter = node.parentNode[__meta__].elementCounter;
+			if (numAst.value === 0)
+				numAst = counter;
+			else
+				numAst = t.binaryExpression("+", counter, numAst);
+		}
 		return t.memberExpression(
 			t.memberExpression(getNode(node.parentNode, context), CHILD_NODES, true),
-			t.numericLiteral(Array.from(node.parentNode.childNodes).indexOf(node)),
+			numAst,
 			true
 		);
+	}
 }
 
 function mergeTextNodes(elem) {
@@ -54,7 +82,14 @@ function mergeTextNodes(elem) {
 		});
 }
 
+const oldParent = Symbol("oldParent")
+
 function moveTemplate(elem, context) {
+	if (oldParent in elem) {
+		// Already moved
+		return
+	}
+
 	const eId = `${context.templateId}$${context.counters.tId++}`;
 	const parent = elem.parentNode;
 	parent.removeChild(elem);
@@ -65,7 +100,7 @@ function moveTemplate(elem, context) {
 	);
 	mergeTextNodes(parent);
 	elem.setAttribute('id', eId);
-	return eId;
+	elem[oldParent] = parent;
 }
 
 Object.assign(exports, {
@@ -73,5 +108,6 @@ Object.assign(exports, {
 	DOCUMENT,
 	createContext,
 	getNode,
-	moveTemplate
+	moveTemplate,
+	oldParent
 });

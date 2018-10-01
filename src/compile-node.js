@@ -1,10 +1,9 @@
 const { default: template } = require('@babel/template');
 
-const { getNode } = require('./context');
+const { getNode, moveTemplate, oldParent } = require('./context');
 const directives = require('./directives');
+const { ELEMENT_NODE, TEXT_NODE } = require('./utils/constants')
 
-const ELEMENT_NODE = 1;
-const TEXT_NODE = 3;
 const INVISIBLE_CHAR = '\u200c';
 
 function compileNode(node, context) {
@@ -17,10 +16,13 @@ function compileNode(node, context) {
 }
 
 function compileElementNode(node, context) {
-	if (node.attributes) {
-		for (const { name, value } of Array.from(node.attributes)) {
-			if (name in directives) {
-				return directives[name](node, value, context);
+	if (node.hasAttributes()) {
+		for (const name in directives) {
+			if (node.hasAttribute(name)) {
+				console.log(name)
+				if (node.tagName === 'template')
+					moveTemplate(node, context);
+				return directives[name](node, node[oldParent] || node.parentNode, node.getAttribute(name), context);
 			}
 		}
 	}
