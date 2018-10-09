@@ -1,8 +1,6 @@
 const compileAndCreate = require('../compileAndCreate');
 
-const element = compileAndCreate(
-	`<template a-if="condition">Hello</template>`
-);
+const element = compileAndCreate(`<template a-if="condition">Hello</template>`);
 
 it('render', () => {
 	element.setState({

@@ -18,20 +18,23 @@ function createContext(
 	parent,
 	{ enableCounter = false, getNodeOverride } = {}
 ) {
-	const meta = METAS.get(parent)
+	const meta = METAS.get(parent);
 
-	const identifier = (meta && meta.identifier) || t.identifier(`_r${counters.rId++}`)
+	const identifier =
+		(meta && meta.identifier) || t.identifier(`_r${counters.rId++}`);
 
-	const elementCounter = enableCounter && ((meta && meta.counter) || t.identifier(`_c${counters.cId++}`))
+	const elementCounter =
+		enableCounter &&
+		((meta && meta.counter) || t.identifier(`_c${counters.cId++}`));
 
 	const newMeta = {
 		identifier,
 		counter: elementCounter
-	}
+	};
 
-	if (parent) METAS.set(parent, newMeta)
-	if (root.content) METAS.set(root.content, newMeta)
-	METAS.set(root, newMeta)
+	if (parent) METAS.set(parent, newMeta);
+	if (root.content) METAS.set(root.content, newMeta);
+	METAS.set(root, newMeta);
 
 	return {
 		context: {
@@ -49,15 +52,46 @@ function createContext(
 			counter: enableCounter && !(meta && meta.counter),
 			identifier: !(meta && meta.identifier)
 		}
-	}
+	};
 }
 
-function setup({ counter: newCounter, identifier: newIdentifier }, { elementCounter, identifier }, identifierAssignment, counterIndex) {
+const LAST_COUNTER_VALUE = new WeakMap();
+
+function setup(
+	{ counter: newCounter, identifier: newIdentifier },
+	{ elementCounter, identifier },
+	identifierAssignment,
+	counterIndex
+) {
 	const ast = [];
 	if (newIdentifier)
-		ast.push(t.variableDeclaration("const", [t.variableDeclarator(identifier, identifierAssignment)]))
+		ast.push(
+			t.variableDeclaration('const', [
+				t.variableDeclarator(identifier, identifierAssignment)
+			])
+		);
 	if (newCounter)
-		ast.push(t.variableDeclaration("let", [t.variableDeclarator(elementCounter, t.numericLiteral(counterIndex))]))
+		ast.push(
+			t.variableDeclaration('let', [
+				t.variableDeclarator(elementCounter, t.numericLiteral(counterIndex))
+			])
+		);
+	// If this counter has already been setup it's at the same level of the tree
+	else if (LAST_COUNTER_VALUE.has(elementCounter))
+		ast.push(
+			t.expressionStatement(
+				t.assignmentExpression(
+					'+=',
+					elementCounter,
+					t.numericLiteral(
+						counterIndex - LAST_COUNTER_VALUE.get(elementCounter)
+					)
+				)
+			)
+		);
+
+	LAST_COUNTER_VALUE.set(elementCounter, counterIndex);
+
 	return ast;
 }
 
@@ -73,10 +107,8 @@ function getNode(node, context) {
 		let numAst = t.numericLiteral(
 			Array.from(node.parentNode.childNodes).indexOf(node)
 		);
-		const parentMeta = node.parentNode && METAS.get(node.parentNode)
-		if (
-			parentMeta && parentMeta.counter
-		) {
+		const parentMeta = node.parentNode && METAS.get(node.parentNode);
+		if (parentMeta && parentMeta.counter) {
 			const counter = parentMeta.counter;
 			if (numAst.value === 0) numAst = counter;
 			else numAst = t.binaryExpression('+', counter, numAst);

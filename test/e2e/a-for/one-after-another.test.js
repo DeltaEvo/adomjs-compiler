@@ -1,20 +1,20 @@
 const compileAndCreate = require('../compileAndCreate');
 
 const element = compileAndCreate(`
-<template a-for="elem1 of list1">
-	<span>{{ elem1 }}</span>
-	<span>{{ elem1 }}</span>
-	<template a-for="elem2 of list2">
-		<span>{{ elem2 }}</span>
-		<span>{{ elem2 }}</span>
-	</template>	
+<span>Before</span>
+<template a-for="elem of list">
+	<span>{{ elem }}</span>
 </template>
+<span>Middle</span>
+<template a-for="elem of list">
+	<span>{{ elem }}</span>
+</template>
+<span>After</span>
 `);
 
 it('render', () => {
 	element.setState({
-		list1: ['Hello', 'World'],
-		list2: ['Bonjour', 'Monde']
+		list: ['Hello', 'World']
 	});
 
 	expect(element.innerHTML).toMatchSnapshot();
@@ -22,8 +22,7 @@ it('render', () => {
 
 it('remove elements', () => {
 	element.setState({
-		list1: ['Hello'],
-		list2: ['Bonjour']
+		list: ['Hello']
 	});
 
 	expect(element.innerHTML).toMatchSnapshot();

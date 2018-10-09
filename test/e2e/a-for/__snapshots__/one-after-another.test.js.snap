@@ -1,0 +1,44 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`remove elements 1`] = `
+
+<span>
+  Before
+</span>
+<span>
+  Hello
+</span>
+<span>
+  World
+</span>
+<span>
+  After
+</span>
+
+`;
+
+exports[`render 1`] = `
+
+<span>
+  Before
+</span>
+<span>
+  Hello
+</span>
+<span>
+  World
+</span>
+<span>
+  Middle
+</span>
+<span>
+  Hello
+</span>
+<span>
+  World
+</span>
+<span>
+  After
+</span>
+
+`;

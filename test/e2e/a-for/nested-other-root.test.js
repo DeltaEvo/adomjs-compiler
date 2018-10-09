@@ -19,7 +19,6 @@ it('render', () => {
 		list2: ['Bonjour', 'Monde']
 	});
 
-
 	expect(element.innerHTML).toMatchSnapshot();
 });
 

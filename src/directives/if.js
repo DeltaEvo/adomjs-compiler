@@ -9,9 +9,14 @@ module.exports = function compileAIf(node, parent, index, value, context) {
 
 	const getParentAst = getNode(parent, context);
 
-	const { context: newContext, new: newIds } = createContext(context, node, parent, {
-		enableCounter: true
-	});
+	const { context: newContext, new: newIds } = createContext(
+		context,
+		node,
+		parent,
+		{
+			enableCounter: true
+		}
+	);
 
 	const { elementCounter, identifier } = newContext;
 
