@@ -4,7 +4,8 @@
   "description": "Adomjs compiler",
   "main": "index.js",
   "scripts": {
-    "format": "prettier --write \"src/**/*.js\""
+    "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\"",
+    "test:e2e": "jest --config test/e2e/config.json"
   },
   "repository": {
     "type": "git",
@@ -21,10 +22,14 @@
     "@babel/parser": "^7.1.0",
     "@babel/template": "^7.1.0",
     "@babel/traverse": "^7.1.0",
-    "@babel/types": "^7.0.0",
-    "xmldom-sre": "^0.1.31"
+    "@babel/types": "^7.0.0"
   },
   "devDependencies": {
-    "prettier": "^1.14.3"
+    "document-register-element": "^1.11.1",
+    "jest": "^23.6.0",
+    "jest-environment-jsdom": "^23.4.0",
+    "jest-serializer-html": "^5.0.0",
+    "prettier": "^1.14.3",
+    "w3c-xmlserializer": "^1.0.0"
   }
 }

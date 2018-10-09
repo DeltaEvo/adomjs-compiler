@@ -1,8 +1,8 @@
 const { default: template } = require('@babel/template');
 
-const { getNode, moveTemplate, oldParent } = require('./context');
+const { getNode, moveTemplate, oldParent, oldIndex } = require('./context');
 const directives = require('./directives');
-const { ELEMENT_NODE, TEXT_NODE } = require('./utils/constants')
+const { ELEMENT_NODE, TEXT_NODE, COMMENT_NODE } = require('./utils/constants');
 
 const INVISIBLE_CHAR = '\u200c';
 
@@ -12,6 +12,10 @@ function compileNode(node, context) {
 			return compileElementNode(node, context);
 		case TEXT_NODE:
 			return compileTextNode(node, context);
+		case COMMENT_NODE:
+			return [];
+		default:
+			throw new Error(`Unsuported type ${node.nodeType}`);
 	}
 }
 
@@ -19,10 +23,17 @@ function compileElementNode(node, context) {
 	if (node.hasAttributes()) {
 		for (const name in directives) {
 			if (node.hasAttribute(name)) {
-				console.log(name)
-				if (node.tagName === 'template')
+				if (node.tagName.toLowerCase() === 'template')
 					moveTemplate(node, context);
-				return directives[name](node, node[oldParent] || node.parentNode, node.getAttribute(name), context);
+				return directives[name](
+					node,
+					node[oldParent] || node.parentNode,
+					oldIndex in node
+						? node[oldIndex]
+						: Array.from(node.parentNode.childrens || []).indexOf(node),
+					node.getAttribute(name),
+					context
+				);
 			}
 		}
 	}
@@ -42,8 +53,9 @@ function compileTextNode(node, context) {
 }
 
 function compileChilds(node, context) {
-	if (node.childNodes) {
-		return Array.from(node.childNodes).reduce(
+	const { childNodes } = node.content || node;
+	if (childNodes) {
+		return Array.from(childNodes).reduce(
 			(ast, child) => ast.concat(compileNode(child, context)),
 			[]
 		);

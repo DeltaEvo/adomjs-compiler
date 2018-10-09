@@ -6,13 +6,13 @@ const { default: template } = require('@babel/template');
 const assert = require('assert');
 
 const createSetState = require('./set-state');
-const removeEmptyTextNodes = require('./utils/remove-empty-text-nodes')
+const removeEmptyTextNodes = require('./utils/remove-empty-text-nodes');
 
 module.exports = function compile(
 	input,
 	{ DOMParser = window.DOMParser, XMLSerializer = window.XMLSerializer }
 ) {
-	const doc = new DOMParser().parseFromString(input);
+	const doc = new DOMParser().parseFromString(input, 'text/html');
 	for (const script of Array.from(doc.getElementsByTagName('script'))) {
 		const ast = parser.parse(script.textContent, {
 			plugins: [
@@ -34,10 +34,10 @@ module.exports = function compile(
 				}
 			}
 		});
-
-		script.textContent = `\n${generate(ast).code}\n`;
+		script.text = `\n${generate(ast).code}\n`;
 	}
 
+	return doc;
 	return new XMLSerializer().serializeToString(doc);
 };
 
@@ -48,30 +48,32 @@ function transformClass(clazz, id, doc) {
 
 	const methods = clazz.get('body.body');
 
+	const constructorName = 'init' || 'constructor';
+
 	const constructor =
 		methods.find(
 			({
 				node: {
 					key: { name }
 				}
-			}) => name == 'constructor'
+			}) => name == constructorName
 		) ||
 		clazz
 			.get('body')
 			.unshiftContainer(
 				'body',
 				t.classMethod(
-					'constructor',
-					t.identifier('constructor'),
+					constructorName === 'constructor' ? 'constructor' : 'method',
+					t.identifier(constructorName),
 					[],
 					t.blockStatement([])
 				)
-			);
+			)[0];
 
 	// If super is not the first call
-	if (!constructor.get('body.body.0.expression.callee').isSuper()) {
+	/* if (!constructor.get('body.body.0.expression.callee').isSuper()) {
 		constructor.get('body').unshiftContainer('body', template.ast`super()`);
-	}
+	} */
 
 	const ownerDocument = getOwnerDocument(clazz);
 
@@ -81,24 +83,31 @@ function transformClass(clazz, id, doc) {
 }
 
 function getOwnerDocument(clazz) {
-	const ownerDocument = clazz.parentPath.scope.generateUidIdentifier('oDoc');
+	const program = clazz.findParent(node => node.isProgram());
+	const ownerDocument = program.scope.generateUidIdentifier('oDoc');
 
-	clazz.insertBefore(template.ast`
+	program.unshiftContainer(
+		'body',
+		template.ast`
 		const ${ownerDocument} = document.currentScript.ownerDocument
-	`);
+	`
+	);
 
 	return ownerDocument;
 }
 
 function attachShadow(constructor, ownerDocument, id) {
-	constructor.get('body.body.0').insertAfter(template.ast`
-		this.attachShadow({mode: "open"})
-			.appendChild(
-				document.importNode(
-					${ownerDocument}.getElementById(${t.stringLiteral(id)}).content,
-					true
-				)
+	const shadow = template.ast`
+	(this.attachShadow ? this.attachShadow({mode: "open"}) : this)
+		.appendChild(
+			document.importNode(
+				${ownerDocument}.getElementById(${t.stringLiteral(id)}).content,
+				true
 			)
-	`);
+		)
+	`;
+	if (constructor.get('body.body.0'))
+		constructor.get('body.body.0').insertBefore(shadow);
+	// TODO: find super and insertAfter
+	else constructor.get('body').unshiftContainer('body', shadow);
 }
-

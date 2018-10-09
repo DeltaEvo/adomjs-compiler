@@ -1,25 +1,24 @@
 const t = require('@babel/types');
 const { default: template } = require('@babel/template');
 
-const {
-	createContext,
-	getNode,
-} = require('../context');
+const { createContext, getNode } = require('../context');
 const compileNode = require('../compile-node');
 
-module.exports = function compileAIf(node, parent, value, context) {
+module.exports = function compileAIf(node, parent, index, value, context) {
 	node.removeAttribute('a-if');
 
-	const getParentAst = getNode(parent, context)
+	const getParentAst = getNode(parent, context);
 
-	const newContext = createContext(context, node, parent, { enableCounter: true });
+	const newContext = createContext(context, node, parent, {
+		enableCounter: true
+	});
 	const { newRoot, elementCounter, identifier } = newContext;
 
-	const innerAst = compileNode.compileElementNode(node, newContext)
+	const innerAst = compileNode.compileElementNode(node, newContext);
 
 	const condition = template(`
 		if (${value}){
-			COUNTER += ${node.childNodes.length - }
+			COUNTER += ${node.childNodes.length}
 			BODY
 		} else {
 
@@ -27,14 +26,14 @@ module.exports = function compileAIf(node, parent, value, context) {
 	`)({
 		BODY: innerAst,
 		COUNTER: elementCounter
-	})
+	});
 
 	const setupAst = newRoot
 		? template.ast`
 			const ${identifier} = ${getParentAst}
-			let ${elementCounter} = ${t.numericLiteral(parent.childNodes.length)}
+			let ${elementCounter} = ${t.numericLiteral(index)}
 		`
 		: [];
 
-	return setupAst.concat(condition)
+	return setupAst.concat(condition);
 };

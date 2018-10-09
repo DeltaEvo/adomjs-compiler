@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`render with a value 1`] = `"Hello World"`;
+
+exports[`render without value 1`] = `"undefined"`;

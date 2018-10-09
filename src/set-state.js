@@ -27,7 +27,7 @@ module.exports = function createSetState(clazz, element, ownerDocument, id) {
 					${newState} = ${newState}(this.$state);
 				const ${CHILD_NODES} = "childNodes";
 				${assignDocument}
-				const ${context.identifier} = this.shadowRoot
+				const ${context.identifier} = this.shadowRoot || this
 				${ast}
 				this.$state = state;
 			`
