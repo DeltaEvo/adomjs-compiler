@@ -1,7 +1,7 @@
 const t = require('@babel/types');
 const { default: template } = require('@babel/template');
 
-const { createContext, getNode } = require('../context');
+const { createContext, getNode, setup } = require('../context');
 const compileNode = require('../compile-node');
 
 module.exports = function compileAIf(node, parent, index, value, context) {
@@ -9,10 +9,11 @@ module.exports = function compileAIf(node, parent, index, value, context) {
 
 	const getParentAst = getNode(parent, context);
 
-	const newContext = createContext(context, node, parent, {
+	const { context: newContext, new: newIds } = createContext(context, node, parent, {
 		enableCounter: true
 	});
-	const { newRoot, elementCounter, identifier } = newContext;
+
+	const { elementCounter, identifier } = newContext;
 
 	const innerAst = compileNode.compileElementNode(node, newContext);
 
@@ -28,12 +29,5 @@ module.exports = function compileAIf(node, parent, index, value, context) {
 		COUNTER: elementCounter
 	});
 
-	const setupAst = newRoot
-		? template.ast`
-			const ${identifier} = ${getParentAst}
-			let ${elementCounter} = ${t.numericLiteral(index)}
-		`
-		: [];
-
-	return setupAst.concat(condition);
+	return setup(newIds, newContext, getParentAst, index).concat(condition);
 };

@@ -4,51 +4,61 @@ const { TEXT_NODE } = require('./utils/constants');
 const CHILD_NODES = t.identifier('_');
 const DOCUMENT = t.identifier('_doc');
 
-const __meta__ = Symbol('__meta__');
+const METAS = new WeekMap();
 
 function createContext(
 	{
 		ownerDocument,
 		nextSibling,
 		templateId,
-		elementCounter: oldElementCounter,
 		hooks = [],
-		counters = { i: 0, tId: 0, rId: 0 }
+		counters = { cId: 0, tId: 0, rId: 0 }
 	},
 	root,
 	parent,
 	{ enableCounter = false, getNodeOverride } = {}
 ) {
-	const newRoot = !(
-		parent &&
-		__meta__ in parent &&
-		parent[__meta__].identifier
-	);
-	const identifier = newRoot
-		? t.identifier(`_r${counters.rId++}`)
-		: parent[__meta__].identifier;
+	const meta = METAS.get(parent)
 
-	const elementCounter =
-		enableCounter &&
-		((newRoot && oldElementCounter) || t.identifier(`_c${counters.i++}`));
+	const identifier = (meta && meta.identifier) || t.identifier(`_r${counters.rId++}`)
+
+	const elementCounter = enableCounter && ((meta && meta.counter) || t.identifier(`_c${counters.cId++}`))
+
 	const newMeta = {
 		identifier,
-		elementCounter
-	};
-	if (parent) parent[__meta__] = newMeta;
-	root[__meta__] = newMeta;
+		counter: elementCounter
+	}
+
+	if (parent) METAS.set(parent, newMeta)
+	if (root.content) METAS.set(root.content, newMeta)
+	METAS.set(root, newMeta)
+
 	return {
-		identifier: identifier,
-		newRoot,
-		root,
-		ownerDocument,
-		hooks,
-		elementCounter,
-		nextSibling,
-		templateId,
-		getNodeOverride,
-		counters
-	};
+		context: {
+			identifier,
+			root,
+			ownerDocument,
+			hooks,
+			elementCounter,
+			nextSibling,
+			templateId,
+			getNodeOverride,
+			counters
+		},
+		new: {
+			counter: enableCounter && !(meta && meta.counter),
+			identifier: !(meta && meta.identifier)
+		}
+	}
+}
+
+function setup({ counter: newCounter, identifier: newIdentifier }, { elementCounter, identifier }, identifierAssignment, counterIndex) {
+	const ast = [];
+	if (newIdentifier)
+		ast.push(t.variableDeclaration("const", [t.variableDeclarator(identifier, identifierAssignment)]))
+	if (newCounter)
+		ast.push(t.variableDeclaration("let", [t.variableDeclarator(elementCounter, t.numericLiteral(counterIndex))]))
+	return ast;
 }
 
 function getNode(node, context) {
@@ -58,17 +68,16 @@ function getNode(node, context) {
 	}
 	if (node === context.root || node === context.root.content)
 		return context.identifier;
-	else if (__meta__ in node) return node[__meta__].identifier;
+	else if (METAS.has(node)) return METAS.get(node).identifier;
 	else {
 		let numAst = t.numericLiteral(
 			Array.from(node.parentNode.childNodes).indexOf(node)
 		);
+		const parentMeta = node.parentNode && METAS.get(node.parentNode)
 		if (
-			node.parentNode &&
-			__meta__ in node.parentNode &&
-			node.parentNode[__meta__].elementCounter
+			parentMeta && parentMeta.counter
 		) {
-			const counter = node.parentNode[__meta__].elementCounter;
+			const counter = parentMeta.counter;
 			if (numAst.value === 0) numAst = counter;
 			else numAst = t.binaryExpression('+', counter, numAst);
 		}
@@ -128,5 +137,6 @@ Object.assign(exports, {
 	getNode,
 	moveTemplate,
 	oldParent,
-	oldIndex
+	oldIndex,
+	setup
 });

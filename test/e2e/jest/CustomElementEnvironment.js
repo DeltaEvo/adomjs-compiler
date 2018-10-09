@@ -4,6 +4,7 @@ const installCE = require('document-register-element/pony');
 module.exports = class CustomElementEnvironment extends JSDomEnvironment {
 	constructor(config) {
 		super(config);
+		this.global.WeekMap = WeakMap;
 		installCE(this.dom.window);
 	}
 

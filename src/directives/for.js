@@ -1,7 +1,7 @@
 const t = require('@babel/types');
 const { default: template } = require('@babel/template');
 
-const { createContext, getNode, CHILD_NODES, DOCUMENT } = require('../context');
+const { createContext, getNode, setup, CHILD_NODES, DOCUMENT } = require('../context');
 const compileNode = require('../compile-node');
 
 module.exports = function compileAFor(node, parent, index, value, context) {
@@ -11,7 +11,7 @@ module.exports = function compileAFor(node, parent, index, value, context) {
 	const templateIdentifier = t.identifier(id.replace('-', '_'));
 	const parentAst = getNode(parent, context);
 
-	const newContext = createContext(context, node, parent, {
+	const { context: newContext, new: newIds } = createContext(context, node, parent, {
 		getNodeOverride(node, { root, identifier, elementCounter }) {
 			if (node.parentNode === root.content) {
 				const numeric = t.numericLiteral(NaN);
@@ -28,38 +28,31 @@ module.exports = function compileAFor(node, parent, index, value, context) {
 		enableCounter: true
 	});
 
-	const { identifier, elementCounter, ownerDocument, newRoot } = newContext;
+	const {identifier, elementCounter, ownerDocument} = newContext;
 
 	const innerAst = compileNode.compileElementNode(node, newContext);
-	const sibblingCount = t.numericLiteral(NaN);
+	const sibblingAfterCount = t.numericLiteral(NaN);
 
-	context.hooks.push(() => (sibblingCount.value = parent.childNodes.length));
+	context.hooks.push(() => (sibblingAfterCount.value = parent.childNodes.length - index));
+
+	const increment = t.numericLiteral(node.content.childNodes.length)
 
 	const loop = template(`
 		for(let ${value})
 			BODY
 	`)({
 		BODY: template.ast`
-			${elementCounter} += ${t.numericLiteral(node.content.childNodes.length)}
-			if (${elementCounter} > ${identifier}[${CHILD_NODES}].length - ${sibblingCount})
-				${identifier}.insertBefore(${DOCUMENT}.importNode(${templateIdentifier}.content, true), ${identifier}[${CHILD_NODES}][${elementCounter} - ${t.numericLiteral(
-			node.content.childNodes.length
-		)}]);
+			${elementCounter} += ${increment}
+			if (${elementCounter} > ${identifier}[${CHILD_NODES}].length - ${sibblingAfterCount})
+				${identifier}.insertBefore(${DOCUMENT}.importNode(${templateIdentifier}.content, true), ${identifier}[${CHILD_NODES}][${elementCounter} - ${increment}]);
 			${innerAst}
 		`
 	});
 
-	const setupAst = newRoot
+	// Only the one that created the counter clean the elements
+	const cleanAst = newIds.counter
 		? template.ast`
-			const ${identifier} = ${parentAst}
-			let ${elementCounter} = ${t.numericLiteral(index)}
-		`
-		: [];
-
-	// Only the one that created the root clean the elements
-	const cleanAst = newRoot
-		? template.ast`
-			while(${identifier}[${CHILD_NODES}].length - ${sibblingCount} > ${elementCounter})
+			while(${identifier}[${CHILD_NODES}].length - ${sibblingAfterCount} > ${elementCounter})
 				${identifier}.removeChild(${identifier}[${CHILD_NODES}][${elementCounter}])
 		`
 		: [];
@@ -68,7 +61,7 @@ module.exports = function compileAFor(node, parent, index, value, context) {
 		const ${templateIdentifier} = ${ownerDocument}.getElementById(${t.stringLiteral(
 		node.getAttribute('id')
 	)})
-		${setupAst}
+		${setup(newIds, newContext, parentAst, index)}
 		${loop}
 		${cleanAst}
 	`;

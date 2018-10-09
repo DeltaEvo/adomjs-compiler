@@ -8,7 +8,7 @@ module.exports = function createSetState(clazz, element, ownerDocument, id) {
 	const newState = t.identifier('state');
 	const assignDocument = template.ast`const ${DOCUMENT} = document;`;
 
-	const context = createContext(
+	const { context } = createContext(
 		{ ownerDocument, nextSibling: element.nextSibling, templateId: id },
 		element
 	);
